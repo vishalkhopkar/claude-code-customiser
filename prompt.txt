@@ -1,0 +1,35 @@
+Generate {NO_OF_STRINGS} historical facts about India for a well-read Indian adult. Each fact should be one they are unlikely to already know.
+
+COVERAGE
+Span the full timeline, from the Indus Valley Civilization to the present (including the Modi years). Spread the facts roughly evenly across eras: ancient, early medieval, medieval, colonial, freedom struggle, post-independence, and recent. Vary the subjects too: politics, science, trade, art, literature, law, geography, and lesser-known people, especially women and regional figures. Don't put two facts on the same topic in one batch.
+
+WHAT MAKES A GOOD FACT
+Specific, surprising, and verifiable. Typical forms: a niche "first," an overlooked detail behind a famous event, a forgotten person or institution, or an unexpected link between India and the wider world.
+
+CONTEXT
+Every fact must carry enough background for a reader to understand why it matters, without looking anything up. Don't write abrupt one-liners. Depending on the fact, include:
+- Who or what was involved, and when.
+- Why it happened, or what led to it.
+- For something that ended or was abolished: when and why it began, and how long it lasted.
+- For a "first": what came before it, or why it was significant.
+- For a person: who they were, in a few words, if they are not widely known.
+
+Good examples:
+- Mukta Tilak, the great-granddaughter-in-law of Lokmanya Tilak, was elected Mayor of Pune on a BJP ticket in 2017 and later became an MLA — a Tilak family member rising through a party far removed from the Congress Tilak once led.
+- Indira Devi, daughter of Maharaja Sayajirao Gaekwad of Baroda, broke off an arranged engagement to the Maharaja of Gwalior and married the prince of Cooch Behar against her father's wishes. The defiance caused a royal scandal; she was the mother of Gayatri Devi.
+- India's first railway was not the 1853 Bombay–Thane passenger train but the Red Hill Railway near Madras (1837), built by Arthur Cotton to haul granite for road-building. It ran 16 years before the famous line.
+- The Constitution of 1950 let the President nominate two Anglo-Indian members to the Lok Sabha, a safeguard Frank Anthony secured for a small, scattered community that could not win seats on its own. Meant to last ten years, it was extended for seven decades until the 104th Amendment let it lapse in January 2020.
+- In 1924, on the Acworth Committee's advice, India began presenting a separate Railway Budget, because railway revenues then rivalled the rest of the government's. The practice lasted 93 years until it was merged into the Union Budget in 2017.
+
+WHAT TO AVOID
+1. Textbook staples and popular trivia. Examples: the 1853 Bombay–Thane passenger train, Shivaji's escape from Agra in a fruit basket, the Gulf rupee. If a fact regularly appears in quiz shows, GK books, or viral "did you know" posts, skip it. A niche angle on a famous topic is fine; the famous fact itself is not.
+2. Recent events that are news rather than history: protests, pending bills, ongoing debates or controversies, parliamentary speeches, temporary budget provisions, election tallies. Bad examples: the 2019 Ayodhya verdict; Congress reaching its lowest tally in 2014.
+
+RECENT FACTS
+Recent facts are welcome if the matter is fully settled and the detail you pick is not the part that made headlines. Example: Droupadi Murmu being the first President born after Independence is good; her being the first tribal President is too well known. The more recent the event, the higher the bar for obscurity.
+
+ACCURACY
+Include only facts you are confident are true. Don't invent details or present disputed claims or legends as settled fact. If a commonly repeated claim is contested, either leave it out or pick an angle that is solid. Give dates and names wherever they apply.
+
+FORMAT
+Output only a JSON array of {NO_OF_STRINGS} strings, ordered chronologically, and nothing else: no heading, no numbering, no introduction, no closing remarks, no code fences. Each string is one fact of two or three sentences (roughly 200–400 characters), including the context described above, and stands on its own. Use single quotes inside a fact if you need quotation marks.

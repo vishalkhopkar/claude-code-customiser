@@ -1,0 +1,13 @@
+{
+  "INTERVAL_HOURS": 24,
+  "NO_OF_STRINGS": 20,
+  "MAX_RETRIES": 3,
+  "RETRY_DELAY_SECONDS": 60,
+  "CLAUDE_TIMEOUT_SECONDS": 600,
+  "MODEL": "claude-opus-5-5",
+  "EFFORT": "high",
+  "PROMPT_FILE": "prompt.txt",
+  "SETTINGS_PATH": "%USERPROFILE%\\.claude\\settings.json",
+  "DATA_DIR": ".",
+  "TASK_NAME": "ClaudeSpinnerVerbs"
+}
