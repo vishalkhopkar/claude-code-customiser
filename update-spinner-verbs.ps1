@@ -65,6 +65,11 @@ function Add-StringRows([int]$runNo, [string[]]$strings) {
     $rows | Export-Csv -Path $stringsCsv -Append -NoTypeInformation -Encoding UTF8
 }
 
+function Get-PreviousStrings([int]$max) {
+    if ($max -le 0 -or -not (Test-Path $stringsCsv)) { return @() }
+    return @(Import-Csv $stringsCsv | Select-Object -Last $max | ForEach-Object { $_.String_text })
+}
+
 function Invoke-ClaudeHeadless([string]$prompt) {
     $claude = (Get-Command claude -ErrorAction Stop).Source
     $arguments = '-p --output-format json --tools "" --strict-mcp-config --no-session-persistence'
@@ -198,6 +203,17 @@ function Set-SpinnerVerbs([string[]]$verbs) {
 }
 
 $prompt = (Get-Content -Raw -Encoding UTF8 $promptFile).Replace('{NO_OF_STRINGS}', "$noOfStrings").Trim()
+
+# Runs share no memory, so past output is fed back in to keep batches from repeating.
+if ($prompt.Contains('{PREVIOUS_STRINGS}')) {
+    $previous = Get-PreviousStrings ([int]$config.HISTORY_MAX_STRINGS)
+    if ($previous.Count -gt 0) {
+        $previousList = ($previous | ForEach-Object { "- $_" }) -join "`n"
+    } else {
+        $previousList = '(none yet)'
+    }
+    $prompt = $prompt.Replace('{PREVIOUS_STRINGS}', $previousList)
+}
 
 $succeeded = $false
 for ($attempt = 0; $attempt -le $maxRetries; $attempt++) {

@@ -36,6 +36,7 @@ All settings live in `config.json`.
 | `NO_OF_STRINGS` | `20` | Number of strings each run must produce |
 | `MAX_RETRIES` | `3` | Retries after a failed attempt |
 | `RETRY_DELAY_SECONDS` | `60` | Wait between attempts |
+| `HISTORY_MAX_STRINGS` | `500` | How many of the most recent past strings to show the model as a "do not repeat" list; `0` disables it |
 | `CLAUDE_TIMEOUT_SECONDS` | `600` | Time limit for one headless Claude call |
 | `MODEL` | `claude-opus-5-5` | Model for the headless run; empty uses your Claude Code default |
 | `EFFORT` | `high` | Effort level for the headless run; empty uses your default |
@@ -49,6 +50,8 @@ Relative paths are resolved against the folder containing `config.json`.
 ## The prompt
 
 `prompt.txt` is sent as-is, with every `{NO_OF_STRINGS}` replaced by the configured count. The prompt must tell Claude to reply with only a JSON array of that many strings. A plain list with one string per line is also accepted as a fallback.
+
+Each run is a fresh session with no memory, so the same prompt tends to produce the same strings day after day. To prevent that, put `{PREVIOUS_STRINGS}` in the prompt: it is replaced with a bulleted list of the most recent `HISTORY_MAX_STRINGS` strings from `strings.csv` (or `(none yet)` on the first run). Strings older than that window can come back. A prompt without the placeholder gets no history.
 
 ## How a run works
 

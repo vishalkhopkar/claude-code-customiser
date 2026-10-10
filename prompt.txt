@@ -31,5 +31,9 @@ Recent facts are welcome if the matter is fully settled and the detail you pick 
 ACCURACY
 Include only facts you are confident are true. Don't invent details or present disputed claims or legends as settled fact. If a commonly repeated claim is contested, either leave it out or pick an angle that is solid. Give dates and names wherever they apply.
 
+ALREADY USED
+The facts below were generated in earlier batches. Do not repeat any of them, and do not pick a different angle on the same person, object, event or institution. Choose entirely different topics.
+{PREVIOUS_STRINGS}
+
 FORMAT
 Output only a JSON array of {NO_OF_STRINGS} strings, ordered chronologically, and nothing else: no heading, no numbering, no introduction, no closing remarks, no code fences. Each string is one fact of two or three sentences (roughly 200–400 characters), including the context described above, and stands on its own. Use single quotes inside a fact if you need quotation marks.
