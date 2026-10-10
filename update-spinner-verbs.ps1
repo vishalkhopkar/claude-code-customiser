@@ -1,9 +1,12 @@
 # Runs a headless Claude Code session, pulls NO_OF_STRINGS strings from its
-# output and installs them as the global spinner verbs in settings.json.
+# output and installs them as the global spinner verbs, both for the CLI
+# (settings.json) and for the IDE extensions listed in IDE_SETTINGS_PATHS.
 # Every attempt is audited in log.csv; pulled strings are kept in strings.csv.
+# -ReapplyLast skips the Claude call and reinstalls the latest batch from strings.csv.
 # Compatible with Windows PowerShell 5.1.
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json')
+    [string]$ConfigPath = (Join-Path $PSScriptRoot 'config.json'),
+    [switch]$ReapplyLast
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +26,7 @@ $maxRetries = [int]$config.MAX_RETRIES
 $retryDelay = [int]$config.RETRY_DELAY_SECONDS
 $timeoutSec = [int]$config.CLAUDE_TIMEOUT_SECONDS
 $settingsPath = Resolve-ConfigPath $config.SETTINGS_PATH
+$ideSettingsPaths = @($config.IDE_SETTINGS_PATHS | Where-Object { $_ } | ForEach-Object { Resolve-ConfigPath $_ })
 $promptFile = Resolve-ConfigPath $config.PROMPT_FILE
 $dataDir = Resolve-ConfigPath $config.DATA_DIR
 $logCsv = Join-Path $dataDir 'log.csv'
@@ -155,9 +159,9 @@ function ConvertTo-JsonString([string]$s) {
 
 # ConvertTo-Json in PowerShell 5.1 mangles indentation and escapes plain
 # characters, so settings.json is serialised by hand to keep it readable.
-function ConvertTo-PrettyJson($value, [int]$level = 0) {
-    $pad = '  ' * $level
-    $inner = '  ' * ($level + 1)
+function ConvertTo-PrettyJson($value, [int]$level = 0, [string]$indent = '  ') {
+    $pad = $indent * $level
+    $inner = $indent * ($level + 1)
     if ($null -eq $value) { return 'null' }
     if ($value -is [bool]) { return $value.ToString().ToLower() }
     if ($value -is [string]) { return ConvertTo-JsonString $value }
@@ -165,41 +169,69 @@ function ConvertTo-PrettyJson($value, [int]$level = 0) {
         $props = @($value.PSObject.Properties)
         if ($props.Count -eq 0) { return '{}' }
         $parts = foreach ($p in $props) {
-            '{0}{1}: {2}' -f $inner, (ConvertTo-JsonString $p.Name), (ConvertTo-PrettyJson $p.Value ($level + 1))
+            '{0}{1}: {2}' -f $inner, (ConvertTo-JsonString $p.Name), (ConvertTo-PrettyJson $p.Value ($level + 1) $indent)
         }
         return "{`n" + ($parts -join ",`n") + "`n$pad}"
     }
     if ($value -is [System.Collections.IEnumerable]) {
         $items = @($value)
         if ($items.Count -eq 0) { return '[]' }
-        $parts = foreach ($item in $items) { $inner + (ConvertTo-PrettyJson $item ($level + 1)) }
+        $parts = foreach ($item in $items) { $inner + (ConvertTo-PrettyJson $item ($level + 1) $indent) }
         return "[`n" + ($parts -join ",`n") + "`n$pad]"
     }
     return ([System.IConvertible]$value).ToString([cultureinfo]::InvariantCulture)
 }
 
-function Set-SpinnerVerbs([string[]]$verbs) {
-    if (Test-Path $settingsPath) {
-        $settings = Get-Content -Raw -Encoding UTF8 $settingsPath | ConvertFrom-Json
+function Set-SpinnerVerbs([string]$path, [string]$key, [string[]]$verbs, [string]$indent = '  ') {
+    if (Test-Path $path) {
+        $settings = Get-Content -Raw -Encoding UTF8 $path | ConvertFrom-Json
     } else {
         $settings = [pscustomobject]@{}
     }
     $spinnerVerbs = [pscustomobject]@{ mode = 'replace'; verbs = $verbs }
-    if ($settings.PSObject.Properties['spinnerVerbs']) {
-        $settings.spinnerVerbs = $spinnerVerbs
+    if ($settings.PSObject.Properties[$key]) {
+        $settings.PSObject.Properties[$key].Value = $spinnerVerbs
     } else {
-        $settings | Add-Member -NotePropertyName spinnerVerbs -NotePropertyValue $spinnerVerbs
+        $settings | Add-Member -NotePropertyName $key -NotePropertyValue $spinnerVerbs
     }
 
-    $json = (ConvertTo-PrettyJson $settings) + "`n"
-    $tmp = "$settingsPath.tmp"
+    $json = (ConvertTo-PrettyJson $settings 0 $indent) + "`n"
+    $tmp = "$path.tmp"
     [IO.File]::WriteAllText($tmp, $json, $Utf8NoBom)
-    if (Test-Path $settingsPath) {
-        # Atomic swap; the previous file is kept as settings.json.bak.
-        [IO.File]::Replace($tmp, $settingsPath, "$settingsPath.bak")
+    if (Test-Path $path) {
+        # Atomic swap; the previous file is kept as <name>.bak.
+        [IO.File]::Replace($tmp, $path, "$path.bak")
     } else {
-        [IO.File]::Move($tmp, $settingsPath)
+        [IO.File]::Move($tmp, $path)
     }
+}
+
+function Install-Strings([string[]]$strings) {
+    Set-SpinnerVerbs $settingsPath 'spinnerVerbs' $strings
+
+    # The VS Code extension ignores the CLI's spinnerVerbs and reads its own
+    # claudeCode.spinnerVerbs setting. These writes are best-effort: a failure
+    # here is logged but must not trigger a retry of the whole Claude call.
+    foreach ($idePath in $ideSettingsPaths) {
+        if (-not (Test-Path (Split-Path -Parent $idePath))) { continue }
+        try {
+            Set-SpinnerVerbs $idePath 'claudeCode.spinnerVerbs' $strings '    '
+        } catch {
+            # Most likely the file has comments or trailing commas, which
+            # ConvertFrom-Json in PowerShell 5.1 rejects; it is left untouched.
+            Write-RunLog "WARNING: could not update $idePath - $($_.Exception.Message)"
+        }
+    }
+}
+
+if ($ReapplyLast) {
+    if (-not (Test-Path $stringsCsv)) { throw "No strings.csv found in $dataDir" }
+    $rows = @(Import-Csv $stringsCsv)
+    $lastRunNo = ($rows | ForEach-Object { [int]$_.Run_no } | Measure-Object -Maximum).Maximum
+    $lastStrings = @($rows | Where-Object { [int]$_.Run_no -eq $lastRunNo } | ForEach-Object { $_.String_text })
+    Install-Strings $lastStrings
+    Write-RunLog "Reapplied $($lastStrings.Count) strings from run $lastRunNo"
+    exit 0
 }
 
 $prompt = (Get-Content -Raw -Encoding UTF8 $promptFile).Replace('{NO_OF_STRINGS}', "$noOfStrings").Trim()
@@ -231,7 +263,7 @@ for ($attempt = 0; $attempt -le $maxRetries; $attempt++) {
         if (@($strings | Where-Object { -not $_ }).Count -gt 0) {
             throw 'output contains empty strings'
         }
-        Set-SpinnerVerbs $strings
+        Install-Strings $strings
         Add-StringRows $runNo $strings
         Add-LogRow $runNo $startedAt $true
         Write-RunLog "Run $runNo succeeded: $($strings -join ', ')"

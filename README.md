@@ -25,6 +25,7 @@ cd claude-code-customiser
 | `.\register-task.ps1 -StartAt '03:00'` | Register with a specific first-run time |
 | `.\register-task.ps1 -Unregister` | Remove the task |
 | `.\update-spinner-verbs.ps1` | Run the job once, right now |
+| `.\update-spinner-verbs.ps1 -ReapplyLast` | Reinstall the latest batch from `strings.csv` without calling Claude |
 
 ## Configuration
 
@@ -42,6 +43,7 @@ All settings live in `config.json`.
 | `EFFORT` | `high` | Effort level for the headless run; empty uses your default |
 | `PROMPT_FILE` | `prompt.txt` | Prompt to send |
 | `SETTINGS_PATH` | `%USERPROFILE%\.claude\settings.json` | Settings file to update |
+| `IDE_SETTINGS_PATHS` | VS Code's user `settings.json` | IDE settings files to update as well (see below); `[]` turns this off |
 | `DATA_DIR` | `.` | Folder for `log.csv`, `strings.csv` and `run.log` |
 | `TASK_NAME` | `ClaudeSpinnerVerbs` | Name of the scheduled task |
 
@@ -53,13 +55,26 @@ Relative paths are resolved against the folder containing `config.json`.
 
 Each run is a fresh session with no memory, so the same prompt tends to produce the same strings day after day. To prevent that, put `{PREVIOUS_STRINGS}` in the prompt: it is replaced with a bulleted list of the most recent `HISTORY_MAX_STRINGS` strings from `strings.csv` (or `(none yet)` on the first run). Strings older than that window can come back. A prompt without the placeholder gets no history.
 
+## VS Code and other IDEs
+
+The Claude Code VS Code extension does not read `spinnerVerbs` from `~/.claude/settings.json`. It has its own VS Code setting, `claudeCode.spinnerVerbs`, with the same `mode` and `verbs` shape. The job therefore writes the strings to every file in `IDE_SETTINGS_PATHS` as well, and open chat panels pick up the change without a restart.
+
+- The default covers VS Code. Add the user `settings.json` of other VS Code-based editors that run the extension (for example `%APPDATA%\\Cursor\\User\\settings.json`) to cover them too.
+- A path whose folder does not exist is skipped.
+- A settings file containing comments or trailing commas cannot be parsed by PowerShell 5.1. It is left untouched and a warning goes to `run.log`.
+- A failed IDE update does not fail the run.
+- The previous file is kept next to it as `settings.json.bak`.
+
+Run `.\update-spinner-verbs.ps1 -ReapplyLast` after adding a path to apply the current strings straight away.
+
 ## How a run works
 
 1. Run `claude -p` headlessly with the prompt, with all tools and MCP servers disabled.
 2. Parse the reply into a list of strings.
 3. Check that there are exactly `NO_OF_STRINGS` non-empty strings.
 4. Write them to `settings.json` as `spinnerVerbs` in `replace` mode. Other settings are left untouched and the previous file is kept as `settings.json.bak`.
-5. Append the strings to `strings.csv` and a `true` row to `log.csv`.
+5. Write them to each IDE settings file as `claudeCode.spinnerVerbs`.
+6. Append the strings to `strings.csv` and a `true` row to `log.csv`.
 
 If any step fails, the attempt is logged as `false` and retried after `RETRY_DELAY_SECONDS`, up to `MAX_RETRIES` times. The script exits with code 1 if every attempt fails.
 
@@ -87,4 +102,4 @@ These are generated in `DATA_DIR` on every run and are not committed.
 
 ## Reverting
 
-Remove the task with `.\register-task.ps1 -Unregister`, then delete the `spinnerVerbs` key from `~/.claude/settings.json` (or restore `settings.json.bak`) to get the default spinner back.
+Remove the task with `.\register-task.ps1 -Unregister`, then delete the `spinnerVerbs` key from `~/.claude/settings.json` and the `claudeCode.spinnerVerbs` key from VS Code's settings (or restore the `settings.json.bak` files) to get the default spinner back.

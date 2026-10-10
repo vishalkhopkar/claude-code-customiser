@@ -9,6 +9,9 @@
   "EFFORT": "high",
   "PROMPT_FILE": "prompt.txt",
   "SETTINGS_PATH": "%USERPROFILE%\\.claude\\settings.json",
+  "IDE_SETTINGS_PATHS": [
+    "%APPDATA%\\Code\\User\\settings.json"
+  ],
   "DATA_DIR": ".",
   "TASK_NAME": "ClaudeSpinnerVerbs"
 }
